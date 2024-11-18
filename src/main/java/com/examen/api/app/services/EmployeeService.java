@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.examen.api.app.helpers.EmployeeHelper;
 import com.examen.api.app.models.entity.Employee;
 import com.examen.api.app.models.entity.Gender;
 import com.examen.api.app.models.entity.Job;
@@ -46,9 +47,8 @@ public class EmployeeService {
   @Autowired
   private IGenderRepository GenderRepository;
 
-  public List<Employee> getAllEmployees() {
-    return EmployeeRepository.findAll();
-  }
+  @Autowired
+  private EmployeeHelper employeeHelper;
 
   public EmployeeResponseDTO save(EmployeeRequestDTO employeeDto) {
     Optional<Job> existingJob = JobRepository.findById(employeeDto.getJob_id());
@@ -87,26 +87,6 @@ public class EmployeeService {
     return response;
   }
 
-  private EmployeeGenderJobResponseDTO getEmployee(Optional<Job> job, Employee employee) {
-    Optional<Gender> gender = GenderRepository.findById(employee.getGenderId());
-
-    return EmployeeGenderJobResponseDTO.builder()
-        .id(employee.getEmployeeId())
-        .name(employee.getName())
-        .last_name(employee.getLastName())
-        .birthdate(employee.getBirthDate())
-        .gender(GenderResponseDTO.builder()
-            .id(gender.get().getGenderId())
-            .name(gender.get().getName())
-            .build())
-        .job(JobResponseDTO.builder()
-            .id(job.get().getJobId())
-            .name(job.get().getName())
-            .salary(job.get().getSalary())
-            .build())
-        .build();
-  }
-
   public EmployeesGroupingResponseDTO getEmployees(JobRequestDTO jobDto) {
     List<EmployeeGenderJobResponseDTO> employeesResponseDto = new ArrayList<EmployeeGenderJobResponseDTO>();
 
@@ -118,7 +98,7 @@ public class EmployeeService {
     Collections.sort(employeesEntity, Comparator.comparing(Employee::getLastName));
 
     employeesEntity.forEach(employee -> {
-      employeesResponseDto.add(getEmployee(job, employee));
+      employeesResponseDto.add(employeeHelper.getEmployee(job, employee));
     });
 
     Map<String, List<EmployeeGenderJobResponseDTO>> groupedByLastName = employeesResponseDto
@@ -133,28 +113,9 @@ public class EmployeeService {
     return EmployeesFilters;
   }
 
-  private EmployeeGenderJobResponseDTO processEmployee(Integer employeeId, EmployessResquestDTO employessDto) {
-    try {
-      Optional<Employee> employee = EmployeeRepository.findByCreatedAtBetweenAndEmployeeId(
-          Utils.setTimestamp(employessDto.getStart_date(), "00:00:00"),
-          Utils.setTimestamp(employessDto.getEnd_date(), "20:59:59"),
-          employeeId);
-
-      if (!employee.isPresent()) {
-        return null;
-      }
-
-      Optional<Job> job = JobRepository.findById(employee.get().getJoId());
-      return getEmployee(job, employee.get());
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
-    }
-  }
-
   public EmployessResponseDTO getEmployeesByIds(EmployessResquestDTO employessDto) {
     List<CompletableFuture<EmployeeGenderJobResponseDTO>> futures = employessDto.getEmployee_ids().stream()
-        .map(employeeId -> CompletableFuture.supplyAsync(() -> processEmployee(employeeId, employessDto)))
+        .map(employeeId -> CompletableFuture.supplyAsync(() -> employeeHelper.processEmployee(employeeId, employessDto)))
         .collect(Collectors.toList());
 
     List<EmployeeGenderJobResponseDTO> employeesResponseDto = futures.stream()

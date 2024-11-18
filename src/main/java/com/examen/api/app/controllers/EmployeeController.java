@@ -54,7 +54,7 @@ public class EmployeeController {
     }
   }
 
-  @PostMapping(value = "/list")
+  @PostMapping(value = "/ids")
   public ResponseEntity<?> getEmployeesByIds(@RequestBody @Validated EmployessResquestDTO employessDto) {
     try {
       return new ResponseEntity<EmployessResponseDTO>(employeeService.getEmployeesByIds(employessDto),
