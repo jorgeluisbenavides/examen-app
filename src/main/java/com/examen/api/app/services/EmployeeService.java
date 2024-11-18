@@ -1,11 +1,14 @@
 package com.examen.api.app.services;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -21,12 +24,16 @@ import com.examen.api.app.models.repository.IJobRepository;
 import com.examen.api.dto.EmployeeGenderJobResponseDTO;
 import com.examen.api.dto.EmployeeRequestDTO;
 import com.examen.api.dto.EmployeeResponseDTO;
-import com.examen.api.dto.EmployeesFiltersResponseDTO;
+import com.examen.api.dto.EmployeesGroupingResponseDTO;
+import com.examen.api.dto.EmployessResponseDTO;
+import com.examen.api.dto.EmployessResquestDTO;
 import com.examen.api.dto.GenderResponseDTO;
 import com.examen.api.dto.JobRequestDTO;
 import com.examen.api.dto.JobResponseDTO;
 import com.examen.api.exceptions.BadRequestException;
 import com.examen.api.utils.Utils;
+
+import lombok.val;
 
 @Service
 public class EmployeeService {
@@ -43,15 +50,15 @@ public class EmployeeService {
     return EmployeeRepository.findAll();
   }
 
-  public EmployeeResponseDTO save(EmployeeRequestDTO employeeDto) {    
+  public EmployeeResponseDTO save(EmployeeRequestDTO employeeDto) {
     Optional<Job> existingJob = JobRepository.findById(employeeDto.getJob_id());
     if (!existingJob.isPresent())
-    throw new BadRequestException("El puesto asignado no existe.");
-    
+      throw new BadRequestException("El puesto asignado no existe.");
+
     Optional<Gender> existeGender = GenderRepository.findById(employeeDto.getGender_id());
     if (!existeGender.isPresent())
-    throw new BadRequestException("El genero asignado no existe.");
-    
+      throw new BadRequestException("El genero asignado no existe.");
+
     Optional<Employee> existingEmployee = EmployeeRepository
         .findByNameAndLastName(
             employeeDto.getName(),
@@ -100,9 +107,9 @@ public class EmployeeService {
         .build();
   }
 
-  public EmployeesFiltersResponseDTO getEmployees(JobRequestDTO jobDto) {
+  public EmployeesGroupingResponseDTO getEmployees(JobRequestDTO jobDto) {
     List<EmployeeGenderJobResponseDTO> employeesResponseDto = new ArrayList<EmployeeGenderJobResponseDTO>();
-    
+
     Optional<Job> job = JobRepository.findById(jobDto.getJob_id());
     if (!job.isPresent())
       throw new BadRequestException("El puesto no existe.");
@@ -115,14 +122,52 @@ public class EmployeeService {
     });
 
     Map<String, List<EmployeeGenderJobResponseDTO>> groupedByLastName = employeesResponseDto
-    .stream()
-    .collect(Collectors.groupingBy(EmployeeGenderJobResponseDTO::getLast_name));    
-    
-    EmployeesFiltersResponseDTO EmployeesFilters = EmployeesFiltersResponseDTO.builder()
+        .stream()
+        .collect(Collectors.groupingBy(EmployeeGenderJobResponseDTO::getLast_name));
+
+    EmployeesGroupingResponseDTO EmployeesFilters = EmployeesGroupingResponseDTO.builder()
         .employees(groupedByLastName)
         .success(employeesResponseDto.size() > 0 ? true : false)
         .build();
 
     return EmployeesFilters;
   }
+
+  private EmployeeGenderJobResponseDTO processEmployee(Integer employeeId, EmployessResquestDTO employessDto) {
+    try {
+      Optional<Employee> employee = EmployeeRepository.findByCreatedAtBetweenAndEmployeeId(
+          Utils.setTimestamp(employessDto.getStart_date(), "00:00:00"),
+          Utils.setTimestamp(employessDto.getEnd_date(), "20:59:59"),
+          employeeId);
+
+      if (!employee.isPresent()) {
+        return null;
+      }
+
+      Optional<Job> job = JobRepository.findById(employee.get().getJoId());
+      return getEmployee(job, employee.get());
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  public EmployessResponseDTO getEmployeesByIds(EmployessResquestDTO employessDto) {
+    List<CompletableFuture<EmployeeGenderJobResponseDTO>> futures = employessDto.getEmployee_ids().stream()
+        .map(employeeId -> CompletableFuture.supplyAsync(() -> processEmployee(employeeId, employessDto)))
+        .collect(Collectors.toList());
+
+    List<EmployeeGenderJobResponseDTO> employeesResponseDto = futures.stream()
+        .map(CompletableFuture::join)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
+
+    EmployessResponseDTO employeesResponse = EmployessResponseDTO.builder()
+        .employees(employeesResponseDto)
+        .success(!employeesResponseDto.isEmpty())
+        .build();
+
+    return employeesResponse;
+  }
+
 }

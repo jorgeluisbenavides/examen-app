@@ -24,7 +24,19 @@ job_id BIGINT NOT NULL,
 name VARCHAR(100) NOT NULL,
 last_name VARCHAR(100) NOT NULL,
 birthdate DATE NOT NULL,
+created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP(),
+updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
 CONSTRAINT unique_name_lastname UNIQUE (name, last_name),
 CONSTRAINT fk_employees_genders FOREIGN KEY (gender_id) REFERENCES genders (id) ON DELETE NO ACTION ON UPDATE NO ACTION,
 CONSTRAINT fk_employees_jobs FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE NO ACTION ON UPDATE NO ACTION
+);
+
+-- Employee Worked Hours
+DROP TABLE IF EXISTS employee_worked_hours;
+CREATE TABLE employee_worked_hours (
+id BIGINT AUTO_INCREMENT PRIMARY KEY,
+employee_id BIGINT NOT NULL,
+worked_hours INT NOT NULL,
+worked_date DATE NOT NULL,
+CONSTRAINT fk_employee FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE NO ACTION ON UPDATE NO ACTION
 );

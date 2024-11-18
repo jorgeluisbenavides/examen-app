@@ -8,7 +8,7 @@ import lombok.Data;
 
 @Builder
 @Data
-public class EmployeesFiltersResponseDTO {
+public class EmployeesGroupingResponseDTO {
   private Map<String, List<EmployeeGenderJobResponseDTO>> employees;
   private Boolean success;
 }

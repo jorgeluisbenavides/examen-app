@@ -2,12 +2,17 @@ package com.examen.api.app.models.entity;
 
 import java.io.Serializable;
 import java.sql.Date;
+import java.sql.Timestamp;
+
+import com.examen.api.utils.Utils;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import lombok.AllArgsConstructor;
@@ -44,4 +49,21 @@ public class Employee implements Serializable {
 
   @Column(name = "birthdate", nullable = false)
   private Date birthDate;
+
+  @Column(name = "created_at", nullable = false)
+  private Timestamp createdAt;
+
+  @Column(name = "updated_at", nullable = false)
+  private Timestamp updatedAt;
+
+  @PrePersist
+    public void prePersist() {
+      createdAt = Utils.getDateNow();
+      updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+      updatedAt = Utils.getDateNow();
+    }
 }

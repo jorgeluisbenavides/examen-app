@@ -8,7 +8,9 @@ import com.examen.api.app.services.EmployeeService;
 import com.examen.api.dto.EmployeeGenderJobResponseDTO;
 import com.examen.api.dto.EmployeeRequestDTO;
 import com.examen.api.dto.EmployeeResponseDTO;
-import com.examen.api.dto.EmployeesFiltersResponseDTO;
+import com.examen.api.dto.EmployeesGroupingResponseDTO;
+import com.examen.api.dto.EmployessResponseDTO;
+import com.examen.api.dto.EmployessResquestDTO;
 import com.examen.api.dto.JobRequestDTO;
 import com.examen.api.exceptions.BadRequestException;
 
@@ -44,7 +46,18 @@ public class EmployeeController {
   @PostMapping(value = "/filters")
   public ResponseEntity<?> getEmployees(@RequestBody @Validated JobRequestDTO jobDto) {
     try {
-      return new ResponseEntity<EmployeesFiltersResponseDTO>(employeeService.getEmployees(jobDto),
+      return new ResponseEntity<EmployeesGroupingResponseDTO>(employeeService.getEmployees(jobDto),
+          HttpStatus.OK);
+    } catch (Exception e) {
+      return new ResponseEntity<String>(e.getMessage(),
+          HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @PostMapping(value = "/list")
+  public ResponseEntity<?> getEmployeesByIds(@RequestBody @Validated EmployessResquestDTO employessDto) {
+    try {
+      return new ResponseEntity<EmployessResponseDTO>(employeeService.getEmployeesByIds(employessDto),
           HttpStatus.OK);
     } catch (Exception e) {
       return new ResponseEntity<String>(e.getMessage(),
